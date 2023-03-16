@@ -17,61 +17,26 @@ import (
 type (
 	BaseConsumeModel interface {
 		Consume(handler Handler) error
-		ConsumeConcurrent(handler Handler, concurrency int) error
+		ConsumeMany(handler Handler, concurrency int) error
 	}
 
 	defaultBaseConsumeModel struct {
-		mux     sync.Mutex
-		Config  *nsq.Config
-		Address string   // 连接地址 nsqd 或 nsqlookupd address
-		CType   ConnType // 连接类型 nsqd:0 nsqlookupd:1
-		Topic   string
-		Channel string
+		sync.Mutex
+		config  *nsq.Config
+		address []string
+		cType   ConnType
+		topic   string
+		channel string
 	}
 )
 
-func (c *defaultBaseConsumeModel) ConsumeConcurrent(handler Handler, concurrency int) error {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	consumer, err := nsq.NewConsumer(c.Topic, c.Channel, c.Config)
-	if err != nil {
-		log.Fatalf("[Nsq] NewConsumeClient err %v", err)
-	}
-
-	log.Println("[Nsq] NewConsumeClient success")
-
-	q := &XHandler{f: handler}
-	consumer.AddConcurrentHandlers(q, concurrency)
-
-	switch c.CType {
-	case NSQD:
-		err = consumer.ConnectToNSQD(c.Address)
-	case NSQLookupd:
-		err = consumer.ConnectToNSQLookupd(c.Address)
-		//case NSQDs:
-		//	err = c.Consumer.ConnectToNSQDs()
-		//case NSQLookupds:
-		//	err = c.Consumer.ConnectToNSQLookupds()
-	}
-
-	if err != nil {
-		log.Printf("[Nsq] ConsumeConcurrent ConnectTo %v err %v", ConnType(c.CType), err)
-		return err
-	}
-
-	log.Println("[Nsq] ConsumeConcurrent success")
-	return nil
-}
-
-//
 func (c *defaultBaseConsumeModel) Consume(handler Handler) error {
-	c.mux.Lock()
-	defer c.mux.Unlock()
+	c.Lock()
+	defer c.Unlock()
 
-	consumer, err := nsq.NewConsumer(c.Topic, c.Channel, c.Config)
+	consumer, err := nsq.NewConsumer(c.topic, c.channel, c.config)
 	if err != nil {
-		log.Fatalf("[Nsq] NewConsumeClient err %v", err)
+		return err
 	}
 
 	log.Println("[Nsq] NewConsumeClient success")
@@ -80,19 +45,15 @@ func (c *defaultBaseConsumeModel) Consume(handler Handler) error {
 	q := &XHandler{f: handler}
 	consumer.AddHandler(q)
 
-	switch c.CType {
+	switch c.cType {
 	case NSQD:
-		err = consumer.ConnectToNSQD(c.Address)
+		err = consumer.ConnectToNSQDs(c.address)
 	case NSQLookupd:
-		err = consumer.ConnectToNSQLookupd(c.Address)
-		//case NSQDs:
-		//	err = c.Consumer.ConnectToNSQDs()
-		//case NSQLookupds:
-		//	err = c.Consumer.ConnectToNSQLookupds()
+		err = consumer.ConnectToNSQLookupds(c.address)
 	}
 
 	if err != nil {
-		log.Printf("[Nsq] Consumer ConnectTo %v err %v", ConnType(c.CType), err)
+		log.Printf("[Nsq] Consumer ConnectTo [%v] err %v\n", c.cType, err)
 		return err
 	}
 
@@ -100,28 +61,57 @@ func (c *defaultBaseConsumeModel) Consume(handler Handler) error {
 	return nil
 }
 
-// TODO addr 支持多个
+func (c *defaultBaseConsumeModel) ConsumeMany(handler Handler, concurrency int) error {
+	c.Lock()
+	defer c.Unlock()
 
-func NewConsumeClientNSQD(addr, topic, channel string, queue int) BaseConsumeModel {
-	return newConsumeClient(addr, topic, channel, NSQD, queue)
-}
-
-func NewConsumeClientNSQLookupd(addr, topic, channel string, queue int) BaseConsumeModel {
-	return newConsumeClient(addr, topic, channel, NSQLookupd, queue)
-}
-
-func newConsumeClient(addr, topic, channel string, connType ConnType, queueSize int) BaseConsumeModel {
-	config := nsq.NewConfig()
-	// 配置项
-	if queueSize > 1 {
-		config.MaxInFlight = queueSize
+	consumer, err := nsq.NewConsumer(c.topic, c.channel, c.config)
+	if err != nil {
+		return err
 	}
 
+	log.Println("[Nsq] NewConsumeClient success")
+
+	q := &XHandler{f: handler}
+	consumer.AddConcurrentHandlers(q, concurrency)
+
+	switch c.cType {
+	case NSQD:
+		err = consumer.ConnectToNSQDs(c.address)
+	case NSQLookupd:
+		err = consumer.ConnectToNSQLookupds(c.address)
+	}
+
+	if err != nil {
+		log.Printf("[Nsq] ConsumeConcurrent ConnectTo [%v] err %v\n", c.cType, err)
+		return err
+	}
+
+	log.Println("[Nsq] ConsumeConcurrent success")
+	return nil
+}
+
+func (c *defaultBaseConsumeModel) SetMaxQueue(queue int) {
+	// MaxInFlight 配置项允许您控制每个消费者可以同时处理的消息数量
+	if queue >= 0 && queue != 1 {
+		c.config.MaxInFlight = queue
+	}
+}
+
+func newConsumeClient(addr []string, topic, channel string, connType ConnType) BaseConsumeModel {
 	return &defaultBaseConsumeModel{
-		Config:  config,
-		Address: addr,
-		Topic:   topic,
-		Channel: channel,
-		CType:   connType,
+		address: addr,
+		topic:   topic,
+		channel: channel,
+		cType:   connType,
+		config:  nsq.NewConfig(),
 	}
+}
+
+func NewConsumeClientNSQD(addr []string, topic, channel string) BaseConsumeModel {
+	return newConsumeClient(addr, topic, channel, NSQD)
+}
+
+func NewConsumeClientNSQLookUpd(addr []string, topic, channel string) BaseConsumeModel {
+	return newConsumeClient(addr, topic, channel, NSQLookupd)
 }
