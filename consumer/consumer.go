@@ -9,8 +9,9 @@
 package consumer
 
 import (
+	"errors"
+	"fmt"
 	"github.com/nsqio/go-nsq"
-	"log"
 	"sync"
 )
 
@@ -18,6 +19,8 @@ type (
 	BaseConsumeModel interface {
 		Consume(handler Handler) error
 		ConsumeMany(handler Handler, concurrency int) error
+		SetMaxInFlight(maxInFlight int)
+		SetMaxAttempts(maxAttempts uint16)
 	}
 
 	defaultBaseConsumeModel struct {
@@ -31,19 +34,13 @@ type (
 )
 
 func (c *defaultBaseConsumeModel) Consume(handler Handler) error {
-	c.Lock()
-	defer c.Unlock()
 
-	consumer, err := nsq.NewConsumer(c.topic, c.channel, c.config)
+	consumer, xHandler, err := c.createConsumer(c.topic, c.channel, handler)
 	if err != nil {
 		return err
 	}
 
-	log.Println("[Nsq] NewConsumeClient success")
-
-	// 必须在Consumer连接之前调用AddHandler()方法，否则会抛panic
-	q := &XHandler{f: handler}
-	consumer.AddHandler(q)
+	consumer.AddHandler(xHandler)
 
 	switch c.cType {
 	case NSQD:
@@ -53,27 +50,21 @@ func (c *defaultBaseConsumeModel) Consume(handler Handler) error {
 	}
 
 	if err != nil {
-		log.Printf("[Nsq] Consumer ConnectTo [%v] err %v\n", c.cType, err)
-		return err
+		return fmt.Errorf("failed to connect to [%v] err [%v]", c.cType, err)
 	}
 
-	log.Println("[Nsq] Consume success")
+	fmt.Println("[Nsq] Consume success")
 	return nil
 }
 
 func (c *defaultBaseConsumeModel) ConsumeMany(handler Handler, concurrency int) error {
-	c.Lock()
-	defer c.Unlock()
 
-	consumer, err := nsq.NewConsumer(c.topic, c.channel, c.config)
+	consumer, xHandler, err := c.createConsumer(c.topic, c.channel, handler)
 	if err != nil {
 		return err
 	}
 
-	log.Println("[Nsq] NewConsumeClient success")
-
-	q := &XHandler{f: handler}
-	consumer.AddConcurrentHandlers(q, concurrency)
+	consumer.AddConcurrentHandlers(xHandler, concurrency)
 
 	switch c.cType {
 	case NSQD:
@@ -83,19 +74,41 @@ func (c *defaultBaseConsumeModel) ConsumeMany(handler Handler, concurrency int) 
 	}
 
 	if err != nil {
-		log.Printf("[Nsq] ConsumeConcurrent ConnectTo [%v] err %v\n", c.cType, err)
-		return err
+		return fmt.Errorf("failed to connect to [%v] err [%v]", c.cType, err)
 	}
 
-	log.Println("[Nsq] ConsumeConcurrent success")
+	fmt.Println("[Nsq] ConsumeConcurrent success")
 	return nil
 }
 
-func (c *defaultBaseConsumeModel) SetMaxQueue(queue int) {
+func (c *defaultBaseConsumeModel) SetMaxInFlight(maxInFlight int) {
 	// MaxInFlight 配置项允许您控制每个消费者可以同时处理的消息数量
-	if queue >= 0 && queue != 1 {
-		c.config.MaxInFlight = queue
+	if maxInFlight >= 0 && maxInFlight != 1 {
+		c.config.MaxInFlight = maxInFlight
 	}
+}
+
+func (c *defaultBaseConsumeModel) SetMaxAttempts(maxAttempts uint16) {
+	c.config.MaxAttempts = maxAttempts
+}
+
+//func (c *defaultBaseConsumeModel) SetMaxBackoffDuration(maxBackoffDuration, maxBackoffJitterDuration nsq.Duration) {
+//	c.config.MaxBackoffDuration = maxBackoffDuration
+//	c.config .MaxBackoffJitter = maxBackoffJitterDuration
+//}
+
+func (c *defaultBaseConsumeModel) createConsumer(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
+	c.Lock()
+	defer c.Unlock()
+
+	consumer, err := nsq.NewConsumer(topic, channel, c.config)
+	if err != nil {
+		return nil, nil, errors.New("failed to create consumer: " + err.Error())
+	}
+
+	xHandler := &XHandler{f: handler}
+
+	return consumer, xHandler, nil
 }
 
 func newConsumeClient(addr []string, topic, channel string, connType ConnType) BaseConsumeModel {
