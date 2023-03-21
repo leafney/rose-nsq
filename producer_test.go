@@ -6,7 +6,7 @@
  * @Description:
  */
 
-package producer
+package rnsq
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 
 func TestNewProductClient(t *testing.T) {
 
-	client, err := NewProductClient("127.0.0.1:4150", "hello")
+	client, err := NewProducer("127.0.0.1:4150", "hello")
 	if err != nil {
 		t.Error(err)
 		return

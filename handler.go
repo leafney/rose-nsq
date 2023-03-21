@@ -6,7 +6,7 @@
  * @Description:
  */
 
-package consumer
+package rnsq
 
 import "github.com/nsqio/go-nsq"
 

@@ -6,11 +6,11 @@
  * @Description:
  */
 
-package consumer
+package rnsq
 
 type ConnType int
 
 const (
 	NSQD       ConnType = 0
-	NSQLookupd ConnType = 1
+	NSQLookupD ConnType = 1
 )

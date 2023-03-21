@@ -6,7 +6,7 @@
  * @Description:
  */
 
-package producer
+package rnsq
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ import (
 	"github.com/nsqio/go-nsq"
 )
 
-type BaseProductModel interface {
+type BaseProducer interface {
 	Publish(data string) error
 	PublishWithTopic(topic, data string) error
 	PublishAsync(data string) error
@@ -39,28 +39,28 @@ type BaseProductModel interface {
 	Close() error
 }
 
-type defaultBaseProductModel struct {
+type defBaseProducer struct {
 	producer *nsq.Producer
 	topic    string
 	mutex    sync.Mutex
 }
 
-func (p *defaultBaseProductModel) Publish(data string) error {
+func (p *defBaseProducer) Publish(data string) error {
 	return p.PublishWithTopic(p.topic, data)
 }
 
-func (p *defaultBaseProductModel) PublishWithTopic(topic, data string) error {
+func (p *defBaseProducer) PublishWithTopic(topic, data string) error {
 	if len(data) == 0 {
 		return errors.New("empty message")
 	}
 	return p.producer.Publish(topic, []byte(data))
 }
 
-func (p *defaultBaseProductModel) PublishAsync(data string) error {
+func (p *defBaseProducer) PublishAsync(data string) error {
 	return p.PublishAsyncWithChan(data, nil)
 }
 
-func (p *defaultBaseProductModel) PublishAsyncWithChan(data string, doneChan chan *nsq.ProducerTransaction,
+func (p *defBaseProducer) PublishAsyncWithChan(data string, doneChan chan *nsq.ProducerTransaction,
 	args ...interface{}) error {
 	if len(data) == 0 {
 		return errors.New("empty message")
@@ -68,61 +68,61 @@ func (p *defaultBaseProductModel) PublishAsyncWithChan(data string, doneChan cha
 	return p.producer.PublishAsync(p.topic, []byte(data), doneChan, args)
 }
 
-func (p *defaultBaseProductModel) PublishDelay(data string, delay time.Duration) error {
+func (p *defBaseProducer) PublishDelay(data string, delay time.Duration) error {
 	return p.PublishDelayWithTopic(p.topic, data, delay)
 }
 
-func (p *defaultBaseProductModel) PublishDelayWithTopic(topic, data string, delay time.Duration) error {
+func (p *defBaseProducer) PublishDelayWithTopic(topic, data string, delay time.Duration) error {
 	if len(data) == 0 {
 		return errors.New("empty message")
 	}
 	return p.producer.DeferredPublish(topic, delay, []byte(data))
 }
 
-func (p *defaultBaseProductModel) PublishDelayAsync(data string, delay time.Duration) error {
+func (p *defBaseProducer) PublishDelayAsync(data string, delay time.Duration) error {
 	return p.PublishDelayAsyncWithChan(data, delay, nil)
 }
 
-func (p *defaultBaseProductModel) PublishDelayAsyncWithChan(data string, delay time.Duration, doneChan chan *nsq.ProducerTransaction,
+func (p *defBaseProducer) PublishDelayAsyncWithChan(data string, delay time.Duration, doneChan chan *nsq.ProducerTransaction,
 	args ...interface{}) error {
 	return p.PublishDelayAsyncWithChanWithTopic(p.topic, data, delay, doneChan, args)
 }
 
-func (p *defaultBaseProductModel) PublishDelayAsyncWithChanWithTopic(topic, data string, delay time.Duration, doneChan chan *nsq.ProducerTransaction, args ...interface{}) error {
+func (p *defBaseProducer) PublishDelayAsyncWithChanWithTopic(topic, data string, delay time.Duration, doneChan chan *nsq.ProducerTransaction, args ...interface{}) error {
 	if len(data) == 0 {
 		return errors.New("empty message")
 	}
 	return p.producer.DeferredPublishAsync(topic, delay, []byte(data), doneChan, args)
 }
 
-func (p *defaultBaseProductModel) PublishMulti(messages [][]byte) error {
+func (p *defBaseProducer) PublishMulti(messages [][]byte) error {
 	return p.PublishMultiByTopic(p.topic, messages)
 }
 
-func (p *defaultBaseProductModel) PublishMultiByTopic(topic string, messages [][]byte) error {
+func (p *defBaseProducer) PublishMultiByTopic(topic string, messages [][]byte) error {
 	if len(messages) == 0 {
 		return errors.New("empty message")
 	}
 	return p.producer.MultiPublish(topic, messages)
 }
 
-func (p *defaultBaseProductModel) PublishMultiAsync(messages [][]byte) error {
+func (p *defBaseProducer) PublishMultiAsync(messages [][]byte) error {
 	return p.PublishMultiAsyncWithChan(messages, nil)
 }
 
-func (p *defaultBaseProductModel) PublishMultiAsyncWithChan(messages [][]byte, doneChan chan *nsq.ProducerTransaction,
+func (p *defBaseProducer) PublishMultiAsyncWithChan(messages [][]byte, doneChan chan *nsq.ProducerTransaction,
 	args ...interface{}) error {
 	return p.PublishMultiAsyncWithChanWithTopic(p.topic, messages, doneChan, args)
 }
 
-func (p *defaultBaseProductModel) PublishMultiAsyncWithChanWithTopic(topic string, messages [][]byte, doneChan chan *nsq.ProducerTransaction, args ...interface{}) error {
+func (p *defBaseProducer) PublishMultiAsyncWithChanWithTopic(topic string, messages [][]byte, doneChan chan *nsq.ProducerTransaction, args ...interface{}) error {
 	if len(messages) == 0 {
 		return errors.New("empty message")
 	}
 	return p.producer.MultiPublishAsync(topic, messages, doneChan, args)
 }
 
-func (p *defaultBaseProductModel) Close() error {
+func (p *defBaseProducer) Close() error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	if p.producer == nil {
@@ -133,7 +133,7 @@ func (p *defaultBaseProductModel) Close() error {
 	return nil
 }
 
-func NewProductClient(addr string, topic string) (BaseProductModel, error) {
+func NewProducer(addr string, topic string) (BaseProducer, error) {
 	config := nsq.NewConfig()
 	// 配置项
 	producer, err := nsq.NewProducer(addr, config)
@@ -141,9 +141,9 @@ func NewProductClient(addr string, topic string) (BaseProductModel, error) {
 		return nil, err
 	}
 
-	log.Println("[Nsq] NewProductClient success")
+	log.Println("[Nsq] NewProducer success")
 
-	return &defaultBaseProductModel{
+	return &defBaseProducer{
 		producer: producer,
 		topic:    topic,
 	}, nil

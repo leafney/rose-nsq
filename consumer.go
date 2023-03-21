@@ -6,7 +6,7 @@
  * @Description:
  */
 
-package consumer
+package rnsq
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	BaseConsumeModel interface {
+	BaseConsumer interface {
 		Consume(handler Handler) error
 		ConsumeWithTopic(topic, channel string, handler Handler) error
 		ConsumeMany(handler Handler, concurrency int) error
@@ -24,7 +24,7 @@ type (
 		SetMaxAttempts(maxAttempts uint16)
 	}
 
-	defaultBaseConsumeModel struct {
+	defBaseConsumer struct {
 		sync.Mutex
 		config  *nsq.Config
 		address []string
@@ -34,7 +34,7 @@ type (
 	}
 )
 
-func (c *defaultBaseConsumeModel) ConsumeWithTopic(topic, channel string, handler Handler) error {
+func (c *defBaseConsumer) ConsumeWithTopic(topic, channel string, handler Handler) error {
 	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func (c *defaultBaseConsumeModel) ConsumeWithTopic(topic, channel string, handle
 	return nil
 }
 
-func (c *defaultBaseConsumeModel) ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error {
+func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error {
 
 	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
 	if err != nil {
@@ -65,36 +65,36 @@ func (c *defaultBaseConsumeModel) ConsumeManyWithTopic(topic, channel string, ha
 	return nil
 }
 
-func (c *defaultBaseConsumeModel) Consume(handler Handler) error {
+func (c *defBaseConsumer) Consume(handler Handler) error {
 	return c.ConsumeWithTopic(c.topic, c.channel, handler)
 }
 
-func (c *defaultBaseConsumeModel) ConsumeMany(handler Handler, concurrency int) error {
+func (c *defBaseConsumer) ConsumeMany(handler Handler, concurrency int) error {
 	return c.ConsumeManyWithTopic(c.topic, c.channel, handler, concurrency)
 }
 
-func (c *defaultBaseConsumeModel) SetMaxInFlight(maxInFlight int) {
+func (c *defBaseConsumer) SetMaxInFlight(maxInFlight int) {
 	// MaxInFlight 配置项允许您控制每个消费者可以同时处理的消息数量
 	if maxInFlight >= 0 && maxInFlight != 1 {
 		c.config.MaxInFlight = maxInFlight
 	}
 }
 
-func (c *defaultBaseConsumeModel) SetMaxAttempts(maxAttempts uint16) {
+func (c *defBaseConsumer) SetMaxAttempts(maxAttempts uint16) {
 	c.config.MaxAttempts = maxAttempts
 }
 
-func (c *defaultBaseConsumeModel) connect(consumer *nsq.Consumer) (err error) {
+func (c *defBaseConsumer) connect(consumer *nsq.Consumer) (err error) {
 	switch c.cType {
 	case NSQD:
 		err = consumer.ConnectToNSQDs(c.address)
-	case NSQLookupd:
+	case NSQLookupD:
 		err = consumer.ConnectToNSQLookupds(c.address)
 	}
 	return
 }
 
-func (c *defaultBaseConsumeModel) createConsumer(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
+func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -108,8 +108,8 @@ func (c *defaultBaseConsumeModel) createConsumer(topic, channel string, handler 
 	return consumer, xHandler, nil
 }
 
-func newConsumeClient(addr []string, topic, channel string, connType ConnType) BaseConsumeModel {
-	return &defaultBaseConsumeModel{
+func newConsumer(addr []string, topic, channel string, connType ConnType) BaseConsumer {
+	return &defBaseConsumer{
 		address: addr,
 		topic:   topic,
 		channel: channel,
@@ -118,10 +118,10 @@ func newConsumeClient(addr []string, topic, channel string, connType ConnType) B
 	}
 }
 
-func NewConsumeClientNSQD(addr []string, topic, channel string) BaseConsumeModel {
-	return newConsumeClient(addr, topic, channel, NSQD)
+func NewConsumerNSQD(addr []string, topic, channel string) BaseConsumer {
+	return newConsumer(addr, topic, channel, NSQD)
 }
 
-func NewConsumeClientNSQLookUpd(addr []string, topic, channel string) BaseConsumeModel {
-	return newConsumeClient(addr, topic, channel, NSQLookupd)
+func NewConsumerNSQLookUpD(addr []string, topic, channel string) BaseConsumer {
+	return newConsumer(addr, topic, channel, NSQLookupD)
 }
