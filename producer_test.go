@@ -11,6 +11,7 @@ package rnsq
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestNewProductClient(t *testing.T) {
@@ -20,8 +21,9 @@ func TestNewProductClient(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 10; i++ {
 		client.Publish(fmt.Sprintf("data-%v", i))
+		time.Sleep(2 * time.Second)
 	}
 
 }
