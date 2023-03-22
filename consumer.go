@@ -37,43 +37,42 @@ type (
 	}
 )
 
+func (c *defBaseConsumer) Consume(handler Handler) error {
+	return c.ConsumeWithTopic(c.topic, c.channel, handler)
+}
+
 func (c *defBaseConsumer) ConsumeWithTopic(topic, channel string, handler Handler) error {
-	consumer, xHandler, err := c.createConsumer2(topic, channel, handler)
+	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
 	if err != nil {
 		return err
 	}
 
 	consumer.AddHandler(xHandler)
 	if err = c.connect(consumer); err != nil {
-		return fmt.Errorf("failed to connect to [%v] err [%v]", c.cType, err)
+		return fmt.Errorf("[Nsq] Failed to connect to [%v] err [%v]", c.cType, err)
 	}
 
 	fmt.Println("[Nsq] Consume success")
 	return nil
 }
 
-func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error {
+func (c *defBaseConsumer) ConsumeMany(handler Handler, concurrency int) error {
+	return c.ConsumeManyWithTopic(c.topic, c.channel, handler, concurrency)
+}
 
-	consumer, xHandler, err := c.createConsumer2(topic, channel, handler)
+func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error {
+	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
 	if err != nil {
 		return err
 	}
 
 	consumer.AddConcurrentHandlers(xHandler, concurrency)
 	if err = c.connect(consumer); err != nil {
-		return fmt.Errorf("failed to connect to [%v] err [%v]", c.cType, err)
+		return fmt.Errorf("[Nsq] Failed to connect to [%v] err [%v]", c.cType, err)
 	}
 
 	fmt.Println("[Nsq] ConsumeConcurrent success")
 	return nil
-}
-
-func (c *defBaseConsumer) Consume(handler Handler) error {
-	return c.ConsumeWithTopic(c.topic, c.channel, handler)
-}
-
-func (c *defBaseConsumer) ConsumeMany(handler Handler, concurrency int) error {
-	return c.ConsumeManyWithTopic(c.topic, c.channel, handler, concurrency)
 }
 
 func (c *defBaseConsumer) SetMaxInFlight(maxInFlight int) {
@@ -103,14 +102,14 @@ func (c *defBaseConsumer) connect(consumer *nsq.Consumer) (err error) {
 	return
 }
 
-func (c *defBaseConsumer) createConsumer2(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
+func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
 	c.Lock()
 	defer c.Unlock()
 
 	xHandler := &XHandler{f: handler}
 
 	if len(topic) == 0 || len(channel) == 0 {
-		return nil, xHandler, errors.New("topic and channel can not empty")
+		return nil, xHandler, errors.New("[Nsq] topic or channel can not empty")
 	}
 
 	conKey := fmt.Sprintf("%s:%s", topic, channel)
@@ -124,29 +123,6 @@ func (c *defBaseConsumer) createConsumer2(topic, channel string, handler Handler
 			return nil, xHandler, err
 		}
 	}
-
-	//consumer, err := nsq.NewConsumer(topic, channel, c.config)
-	//if err != nil {
-	//	return nil, nil, fmt.Errorf("failed to create consumer err [%v]", err)
-	//}
-	//
-	//xHandler := &XHandler{f: handler}
-	//
-	//return consumer, xHandler, nil
-}
-
-func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
-	c.Lock()
-	defer c.Unlock()
-
-	consumer, err := nsq.NewConsumer(topic, channel, c.config)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to create consumer err [%v]", err)
-	}
-
-	xHandler := &XHandler{f: handler}
-
-	return consumer, xHandler, nil
 }
 
 func newConsumer(addr []string, topic, channel string, connType ConnType) BaseConsumer {
