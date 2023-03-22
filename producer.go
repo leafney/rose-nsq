@@ -36,7 +36,7 @@ type BaseProducer interface {
 		args ...interface{}) error
 	PublishMultiAsyncWithChanWithTopic(topic string, messages [][]byte, doneChan chan *nsq.ProducerTransaction,
 		args ...interface{}) error
-	Close() error
+	Close()
 }
 
 type defBaseProducer struct {
@@ -122,15 +122,14 @@ func (p *defBaseProducer) PublishMultiAsyncWithChanWithTopic(topic string, messa
 	return p.producer.MultiPublishAsync(topic, messages, doneChan, args)
 }
 
-func (p *defBaseProducer) Close() error {
+func (p *defBaseProducer) Close() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 	if p.producer == nil {
-		return nil
+		return
 	}
 	p.producer.Stop()
 	p.producer = nil
-	return nil
 }
 
 func NewProducer(addr string, topic string) (BaseProducer, error) {

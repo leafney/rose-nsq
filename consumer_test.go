@@ -22,6 +22,6 @@ func TestNewConsumeClient(t *testing.T) {
 		msg.Success()
 		return nil
 	})
-
+	defer client.Close()
 	select {}
 }

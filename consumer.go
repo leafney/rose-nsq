@@ -9,6 +9,7 @@
 package rnsq
 
 import (
+	"errors"
 	"fmt"
 	"github.com/nsqio/go-nsq"
 	"sync"
@@ -22,20 +23,22 @@ type (
 		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error
 		SetMaxInFlight(maxInFlight int)
 		SetMaxAttempts(maxAttempts uint16)
+		Close()
 	}
 
 	defBaseConsumer struct {
 		sync.Mutex
-		config  *nsq.Config
-		address []string
-		cType   ConnType
-		topic   string
-		channel string
+		cType     ConnType
+		config    *nsq.Config
+		address   []string
+		topic     string
+		channel   string
+		consumers map[string]*nsq.Consumer
 	}
 )
 
 func (c *defBaseConsumer) ConsumeWithTopic(topic, channel string, handler Handler) error {
-	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
+	consumer, xHandler, err := c.createConsumer2(topic, channel, handler)
 	if err != nil {
 		return err
 	}
@@ -51,7 +54,7 @@ func (c *defBaseConsumer) ConsumeWithTopic(topic, channel string, handler Handle
 
 func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error {
 
-	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
+	consumer, xHandler, err := c.createConsumer2(topic, channel, handler)
 	if err != nil {
 		return err
 	}
@@ -84,6 +87,12 @@ func (c *defBaseConsumer) SetMaxAttempts(maxAttempts uint16) {
 	c.config.MaxAttempts = maxAttempts
 }
 
+func (c *defBaseConsumer) Close() {
+	for _, con := range c.consumers {
+		con.Stop()
+	}
+}
+
 func (c *defBaseConsumer) connect(consumer *nsq.Consumer) (err error) {
 	switch c.cType {
 	case NSQD:
@@ -92,6 +101,38 @@ func (c *defBaseConsumer) connect(consumer *nsq.Consumer) (err error) {
 		err = consumer.ConnectToNSQLookupds(c.address)
 	}
 	return
+}
+
+func (c *defBaseConsumer) createConsumer2(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
+	c.Lock()
+	defer c.Unlock()
+
+	xHandler := &XHandler{f: handler}
+
+	if len(topic) == 0 || len(channel) == 0 {
+		return nil, xHandler, errors.New("topic and channel can not empty")
+	}
+
+	conKey := fmt.Sprintf("%s:%s", topic, channel)
+	if conVal, ok := c.consumers[conKey]; ok {
+		return conVal, xHandler, nil
+	} else {
+		if consumer, err := nsq.NewConsumer(topic, channel, c.config); err == nil {
+			c.consumers[conKey] = consumer
+			return consumer, xHandler, nil
+		} else {
+			return nil, xHandler, err
+		}
+	}
+
+	//consumer, err := nsq.NewConsumer(topic, channel, c.config)
+	//if err != nil {
+	//	return nil, nil, fmt.Errorf("failed to create consumer err [%v]", err)
+	//}
+	//
+	//xHandler := &XHandler{f: handler}
+	//
+	//return consumer, xHandler, nil
 }
 
 func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
@@ -110,11 +151,12 @@ func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler)
 
 func newConsumer(addr []string, topic, channel string, connType ConnType) BaseConsumer {
 	return &defBaseConsumer{
-		address: addr,
-		topic:   topic,
-		channel: channel,
-		cType:   connType,
-		config:  nsq.NewConfig(),
+		address:   addr,
+		topic:     topic,
+		channel:   channel,
+		cType:     connType,
+		config:    nsq.NewConfig(),
+		consumers: make(map[string]*nsq.Consumer),
 	}
 }
 
