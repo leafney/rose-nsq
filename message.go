@@ -34,7 +34,7 @@ func (m *XMessage) Fail() {
 	m.Finish(false)
 }
 
-func (m *XMessage) DelayResend(delay time.Duration) {
+func (m *XMessage) DelayReSend(delay time.Duration) {
 	m.Message.Requeue(delay)
 }
 
