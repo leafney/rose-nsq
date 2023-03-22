@@ -38,7 +38,7 @@ func (m *XMessage) DelayReSend(delay time.Duration) {
 	m.Message.Requeue(delay)
 }
 
-func (m *XMessage) ReadJSON(v interface{}) error {
+func (m *XMessage) ReadJson(v interface{}) error {
 	return json.Unmarshal(m.Body, v)
 }
 
