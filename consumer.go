@@ -23,7 +23,7 @@ type (
 		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error
 		SetMaxInFlight(maxInFlight int)
 		SetMaxAttempts(maxAttempts uint16)
-		Close()
+		Stop()
 	}
 
 	defBaseConsumer struct {
@@ -86,7 +86,7 @@ func (c *defBaseConsumer) SetMaxAttempts(maxAttempts uint16) {
 	c.config.MaxAttempts = maxAttempts
 }
 
-func (c *defBaseConsumer) Close() {
+func (c *defBaseConsumer) Stop() {
 	for _, con := range c.consumers {
 		con.Stop()
 	}

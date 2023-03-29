@@ -38,10 +38,14 @@ func (m *XMessage) DelayReSend(delay time.Duration) {
 	m.Message.Requeue(delay)
 }
 
-func (m *XMessage) ReadJson(v interface{}) error {
+func (m *XMessage) ToJson(v interface{}) error {
 	return json.Unmarshal(m.Body, v)
 }
 
-func (m *XMessage) ReadString() string {
+func (m *XMessage) ToString() string {
 	return string(m.Body)
+}
+
+func (m *XMessage) ToByte() []byte {
+	return m.Body
 }
