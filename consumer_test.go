@@ -13,8 +13,8 @@ import "testing"
 func TestNewConsumeClient(t *testing.T) {
 
 	client := NewConsumerNSQD([]string{"127.0.0.1:4150"}, "hello", "111")
-	//client := NewConsumerNSQLookUpD([]string{""}, "", "")
 
+	//client := NewConsumerNSQLookUpD([]string{""}, "", "")
 	//client.SetMaxInFlight(2)
 
 	client.Consume(func(msg *XMessage) error {

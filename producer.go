@@ -36,6 +36,7 @@ type BaseProducer interface {
 		args ...interface{}) error
 	PublishMultiAsyncWithChanWithTopic(topic string, messages [][]byte, doneChan chan *nsq.ProducerTransaction,
 		args ...interface{}) error
+	SetSecret(secret string) *defBaseProducer
 	Stop()
 }
 
@@ -43,6 +44,7 @@ type defBaseProducer struct {
 	producer *nsq.Producer
 	topic    string
 	mutex    sync.Mutex
+	config   *nsq.Config
 }
 
 func (p *defBaseProducer) Publish(data string) error {
@@ -122,6 +124,11 @@ func (p *defBaseProducer) PublishMultiAsyncWithChanWithTopic(topic string, messa
 	return p.producer.MultiPublishAsync(topic, messages, doneChan, args)
 }
 
+func (p *defBaseProducer) SetSecret(secret string) *defBaseProducer {
+	p.config.AuthSecret = secret
+	return p
+}
+
 func (p *defBaseProducer) Stop() {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -145,5 +152,6 @@ func NewProducer(addr string, topic string) (BaseProducer, error) {
 	return &defBaseProducer{
 		producer: producer,
 		topic:    topic,
+		config:   config,
 	}, nil
 }

@@ -22,8 +22,9 @@ type (
 		ConsumeWithTopic(topic, channel string, handler Handler) error
 		ConsumeMany(handler Handler, concurrency int) error
 		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error
-		SetMaxInFlight(maxInFlight int)
-		SetMaxAttempts(maxAttempts uint16)
+		SetMaxInFlight(maxInFlight int) *defBaseConsumer
+		SetMaxAttempts(maxAttempts uint16) *defBaseConsumer
+		SetSecret(secret string) *defBaseConsumer
 		Stop()
 	}
 
@@ -76,15 +77,22 @@ func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Ha
 	return nil
 }
 
-func (c *defBaseConsumer) SetMaxInFlight(maxInFlight int) {
+func (c *defBaseConsumer) SetMaxInFlight(maxInFlight int) *defBaseConsumer {
 	// MaxInFlight 配置项允许您控制每个消费者可以同时处理的消息数量
 	if maxInFlight >= 0 && maxInFlight != 1 {
 		c.config.MaxInFlight = maxInFlight
 	}
+	return c
 }
 
-func (c *defBaseConsumer) SetMaxAttempts(maxAttempts uint16) {
+func (c *defBaseConsumer) SetMaxAttempts(maxAttempts uint16) *defBaseConsumer {
 	c.config.MaxAttempts = maxAttempts
+	return c
+}
+
+func (c *defBaseConsumer) SetSecret(secret string) *defBaseConsumer {
+	c.config.AuthSecret = secret
+	return c
 }
 
 func (c *defBaseConsumer) Stop() {

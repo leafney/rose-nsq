@@ -21,6 +21,9 @@ func TestNewProductClient(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+	//client.SetSecret("")
+
 	for i := 0; i < 10; i++ {
 		client.Publish(fmt.Sprintf("data-%v", i))
 		time.Sleep(2 * time.Second)
