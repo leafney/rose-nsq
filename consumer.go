@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/nsqio/go-nsq"
+	"log"
 	"sync"
 )
 
@@ -52,7 +53,7 @@ func (c *defBaseConsumer) ConsumeWithTopic(topic, channel string, handler Handle
 		return fmt.Errorf("[Nsq] Failed to connect to [%v] err [%v]", c.cType, err)
 	}
 
-	fmt.Println("[Nsq] Consume success")
+	log.Println("[Nsq] Consume success")
 	return nil
 }
 
@@ -71,7 +72,7 @@ func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Ha
 		return fmt.Errorf("[Nsq] Failed to connect to [%v] err [%v]", c.cType, err)
 	}
 
-	fmt.Println("[Nsq] ConsumeConcurrent success")
+	log.Println("[Nsq] ConsumeConcurrent success")
 	return nil
 }
 
