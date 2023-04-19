@@ -19,9 +19,9 @@ import (
 type (
 	BaseConsumer interface {
 		Consume(handler Handler) error
-		ConsumeWithTopic(topic, channel string, handler Handler) error
+		ConsumeWithTopic(topic, channel string, handler Handler, opts ...Option) error
 		ConsumeMany(handler Handler, concurrency int) error
-		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error
+		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int, opts ...Option) error
 
 		Stop()
 
@@ -45,8 +45,8 @@ func (c *defBaseConsumer) Consume(handler Handler) error {
 	return c.ConsumeWithTopic(c.topic, c.channel, handler)
 }
 
-func (c *defBaseConsumer) ConsumeWithTopic(topic, channel string, handler Handler) error {
-	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
+func (c *defBaseConsumer) ConsumeWithTopic(topic, channel string, handler Handler, opts ...Option) error {
+	consumer, xHandler, err := c.createConsumer(topic, channel, handler, opts...)
 	if err != nil {
 		return err
 	}
@@ -64,8 +64,8 @@ func (c *defBaseConsumer) ConsumeMany(handler Handler, concurrency int) error {
 	return c.ConsumeManyWithTopic(c.topic, c.channel, handler, concurrency)
 }
 
-func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error {
-	consumer, xHandler, err := c.createConsumer(topic, channel, handler)
+func (c *defBaseConsumer) ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int, opts ...Option) error {
+	consumer, xHandler, err := c.createConsumer(topic, channel, handler, opts...)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (c *defBaseConsumer) connect(consumer *nsq.Consumer) (err error) {
 	return
 }
 
-func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler) (*nsq.Consumer, *XHandler, error) {
+func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler, opts ...Option) (*nsq.Consumer, *XHandler, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -129,6 +129,16 @@ func (c *defBaseConsumer) createConsumer(topic, channel string, handler Handler)
 	if conVal, ok := c.consumers[conKey]; ok {
 		return conVal, xHandler, nil
 	} else {
+
+		// 配置项
+		var opt options
+		for _, o := range opts {
+			o(&opt)
+		}
+		if len(opt.Secret) > 0 {
+			c.config.AuthSecret = opt.Secret
+		}
+
 		if consumer, err := nsq.NewConsumer(topic, channel, c.config); err == nil {
 			c.consumers[conKey] = consumer
 			return consumer, xHandler, nil

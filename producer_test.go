@@ -16,7 +16,7 @@ import (
 
 func TestNewProductClient(t *testing.T) {
 
-	client, err := NewProducer("127.0.0.1:4150", "hello", SetSecret("abcdef"))
+	client, err := NewProducer("127.0.0.1:4150", "hello", SetSecret("abcd"))
 	if err != nil {
 		t.Error(err)
 		return
@@ -24,7 +24,7 @@ func TestNewProductClient(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		client.Publish(fmt.Sprintf("data-%v", i))
-		time.Sleep(2 * time.Second)
+		time.Sleep(1 * time.Second)
 	}
 
 }
