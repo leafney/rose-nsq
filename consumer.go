@@ -93,7 +93,9 @@ func (c *defBaseConsumer) SetMaxAttempts(maxAttempts uint16) *defBaseConsumer {
 }
 
 func (c *defBaseConsumer) SetSecret(secret string) *defBaseConsumer {
-	c.config.AuthSecret = secret
+	if len(secret) > 0 {
+		c.config.AuthSecret = secret
+	}
 	return c
 }
 

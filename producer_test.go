@@ -16,13 +16,11 @@ import (
 
 func TestNewProductClient(t *testing.T) {
 
-	client, err := NewProducer("127.0.0.1:4150", "hello")
+	client, err := NewProducer("127.0.0.1:4150", "hello", SetSecret("abcdef"))
 	if err != nil {
 		t.Error(err)
 		return
 	}
-
-	//client.SetSecret("")
 
 	for i := 0; i < 10; i++ {
 		client.Publish(fmt.Sprintf("data-%v", i))
