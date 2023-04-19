@@ -22,10 +22,12 @@ type (
 		ConsumeWithTopic(topic, channel string, handler Handler) error
 		ConsumeMany(handler Handler, concurrency int) error
 		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int) error
+
+		Stop()
+
 		SetMaxInFlight(maxInFlight int) *defBaseConsumer
 		SetMaxAttempts(maxAttempts uint16) *defBaseConsumer
 		SetSecret(secret string) *defBaseConsumer
-		Stop()
 	}
 
 	defBaseConsumer struct {
