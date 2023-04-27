@@ -24,7 +24,8 @@ type (
 		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int, opts ...Option) error
 		ChangeMaxInFlight(maxInFlight int)
 		ChangeMaxInFlightWithTopic(topic, channel string, maxInFlight int)
-
+		Stats() *ConsumerStates
+		StatsWithTopic(topic, channel string) *ConsumerStates
 		Stop()
 
 		SetMaxInFlight(maxInFlight int) *defBaseConsumer
@@ -41,7 +42,32 @@ type (
 		channel   string
 		consumers map[string]*nsq.Consumer
 	}
+
+	ConsumerStates struct {
+		Received    uint64
+		Finished    uint64
+		Requeued    uint64
+		Connections int
+	}
 )
+
+func (c *defBaseConsumer) StatsWithTopic(topic, channel string) (stats *ConsumerStates) {
+	conKey := fmt.Sprintf("%s:%s", topic, channel)
+	if conVal, ok := c.consumers[conKey]; ok {
+		cs := conVal.Stats()
+		stats = &ConsumerStates{
+			Received:    cs.MessagesReceived,
+			Finished:    cs.MessagesFinished,
+			Requeued:    cs.MessagesRequeued,
+			Connections: cs.Connections,
+		}
+	}
+	return
+}
+
+func (c *defBaseConsumer) Stats() *ConsumerStates {
+	return c.StatsWithTopic(c.topic, c.channel)
+}
 
 func (c *defBaseConsumer) ChangeMaxInFlightWithTopic(topic, channel string, maxInFlight int) {
 	conKey := fmt.Sprintf("%s:%s", topic, channel)
