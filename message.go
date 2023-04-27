@@ -38,6 +38,10 @@ func (m *XMessage) DelayReSend(delay time.Duration) {
 	m.Message.Requeue(delay)
 }
 
+func (m *XMessage) DelayReSendWithoutBackoff(delay time.Duration) {
+	m.Message.RequeueWithoutBackoff(delay)
+}
+
 func (m *XMessage) ToJson(v interface{}) error {
 	return json.Unmarshal(m.Body, v)
 }

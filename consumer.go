@@ -22,6 +22,8 @@ type (
 		ConsumeWithTopic(topic, channel string, handler Handler, opts ...Option) error
 		ConsumeMany(handler Handler, concurrency int) error
 		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int, opts ...Option) error
+		ChangeMaxInFlight(maxInFlight int)
+		ChangeMaxInFlightWithTopic(topic, channel string, maxInFlight int)
 
 		Stop()
 
@@ -40,6 +42,17 @@ type (
 		consumers map[string]*nsq.Consumer
 	}
 )
+
+func (c *defBaseConsumer) ChangeMaxInFlightWithTopic(topic, channel string, maxInFlight int) {
+	conKey := fmt.Sprintf("%s:%s", topic, channel)
+	if conVal, ok := c.consumers[conKey]; ok {
+		conVal.ChangeMaxInFlight(maxInFlight)
+	}
+}
+
+func (c *defBaseConsumer) ChangeMaxInFlight(maxInFlight int) {
+	c.ChangeMaxInFlightWithTopic(c.topic, c.channel, maxInFlight)
+}
 
 func (c *defBaseConsumer) Consume(handler Handler) error {
 	return c.ConsumeWithTopic(c.topic, c.channel, handler)
