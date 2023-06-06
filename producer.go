@@ -45,8 +45,9 @@ type BaseProducer interface {
 	PublishBDelayAsyncWithChanWithTopic(topic string, data []byte, delay time.Duration, doneChan chan *nsq.ProducerTransaction,
 		args ...interface{}) error
 	PublishMulti(messages [][]byte) error
-	PublishMultiByTopic(topic string, messages [][]byte) error
+	PublishMultiWithTopic(topic string, messages [][]byte) error
 	PublishMultiAsync(messages [][]byte) error
+	PublishMultiAsyncWithTopic(topic string, messages [][]byte) error
 	PublishMultiAsyncWithChan(messages [][]byte, doneChan chan *nsq.ProducerTransaction,
 		args ...interface{}) error
 	PublishMultiAsyncWithChanWithTopic(topic string, messages [][]byte, doneChan chan *nsq.ProducerTransaction,
@@ -174,10 +175,10 @@ func (p *defBaseProducer) PublishBDelayAsyncWithChanWithTopic(topic string, data
 // --------------------
 
 func (p *defBaseProducer) PublishMulti(messages [][]byte) error {
-	return p.PublishMultiByTopic(p.topic, messages)
+	return p.PublishMultiWithTopic(p.topic, messages)
 }
 
-func (p *defBaseProducer) PublishMultiByTopic(topic string, messages [][]byte) error {
+func (p *defBaseProducer) PublishMultiWithTopic(topic string, messages [][]byte) error {
 	if len(messages) == 0 {
 		return errors.New("empty message")
 	}
@@ -186,6 +187,10 @@ func (p *defBaseProducer) PublishMultiByTopic(topic string, messages [][]byte) e
 
 func (p *defBaseProducer) PublishMultiAsync(messages [][]byte) error {
 	return p.PublishMultiAsyncWithChan(messages, nil)
+}
+
+func (p *defBaseProducer) PublishMultiAsyncWithTopic(topic string, messages [][]byte) error {
+	return p.PublishMultiAsyncWithChanWithTopic(topic, messages, nil)
 }
 
 func (p *defBaseProducer) PublishMultiAsyncWithChan(messages [][]byte, doneChan chan *nsq.ProducerTransaction,
