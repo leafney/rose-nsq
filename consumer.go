@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/nsqio/go-nsq"
 	"log"
+	"strings"
 	"sync"
 )
 
@@ -24,6 +25,8 @@ type (
 		ConsumeManyWithTopic(topic, channel string, handler Handler, concurrency int, opts ...Option) error
 		ChangeMaxInFlight(maxInFlight int)
 		ChangeMaxInFlightWithTopic(topic, channel string, maxInFlight int)
+		SetLogLevel(level string)
+		SetLogLevelWithTopic(topic, channel, level string)
 		Stats() *ConsumerStates
 		StatsWithTopic(topic, channel string) *ConsumerStates
 		Stop()
@@ -78,6 +81,28 @@ func (c *defBaseConsumer) ChangeMaxInFlightWithTopic(topic, channel string, maxI
 
 func (c *defBaseConsumer) ChangeMaxInFlight(maxInFlight int) {
 	c.ChangeMaxInFlightWithTopic(c.topic, c.channel, maxInFlight)
+}
+
+func (c *defBaseConsumer) SetLogLevelWithTopic(topic, channel, level string) {
+	conKey := fmt.Sprintf("%s:%s", topic, channel)
+	if conVal, ok := c.consumers[conKey]; ok {
+		switch strings.ToLower(level) {
+		case "debug":
+			conVal.SetLoggerLevel(nsq.LogLevelDebug)
+		case "warn":
+			conVal.SetLoggerLevel(nsq.LogLevelWarning)
+		case "error":
+			conVal.SetLoggerLevel(nsq.LogLevelError)
+		case "info":
+			conVal.SetLoggerLevel(nsq.LogLevelInfo)
+		default:
+
+		}
+	}
+}
+
+func (c *defBaseConsumer) SetLogLevel(level string) {
+	c.SetLogLevelWithTopic(c.topic, c.channel, level)
 }
 
 func (c *defBaseConsumer) Consume(handler Handler) error {

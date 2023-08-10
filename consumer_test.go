@@ -27,6 +27,8 @@ func TestNewConsumeClient(t *testing.T) {
 	//client.SetMaxInFlight(2)
 	//client.SetSecret("abcdef")
 
+	//client.SetLogLevel("error")
+
 	// test Consume
 	//if err := client.Consume(func(msg *XMessage) error {
 	//	t.Log(msg.ToString())
@@ -59,6 +61,7 @@ func TestNewConsumeClient(t *testing.T) {
 		client.ChangeMaxInFlight(4)
 		time.Sleep(2 * time.Second)
 		client.ChangeMaxInFlight(1)
+
 	}()
 
 	select {}

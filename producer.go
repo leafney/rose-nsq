@@ -11,6 +11,7 @@ package rnsq
 import (
 	"errors"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,7 +53,7 @@ type BaseProducer interface {
 		args ...interface{}) error
 	PublishMultiAsyncWithChanWithTopic(topic string, messages [][]byte, doneChan chan *nsq.ProducerTransaction,
 		args ...interface{}) error
-
+	SetLogLevel(level string)
 	Stop()
 }
 
@@ -203,6 +204,21 @@ func (p *defBaseProducer) PublishMultiAsyncWithChanWithTopic(topic string, messa
 		return errors.New("empty message")
 	}
 	return p.producer.MultiPublishAsync(topic, messages, doneChan, args)
+}
+
+func (p *defBaseProducer) SetLogLevel(level string) {
+	switch strings.ToLower(level) {
+	case "debug":
+		p.producer.SetLoggerLevel(nsq.LogLevelDebug)
+	case "warn":
+		p.producer.SetLoggerLevel(nsq.LogLevelWarning)
+	case "error":
+		p.producer.SetLoggerLevel(nsq.LogLevelError)
+	case "info":
+		p.producer.SetLoggerLevel(nsq.LogLevelInfo)
+	default:
+
+	}
 }
 
 // --------------------

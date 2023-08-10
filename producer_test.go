@@ -22,6 +22,8 @@ func TestNewProductClient(t *testing.T) {
 		return
 	}
 
+	//client.SetLogLevel("error")
+
 	for i := 0; i < 50; i++ {
 		msg := fmt.Sprintf("data-%v", i)
 		client.Publish(msg)
